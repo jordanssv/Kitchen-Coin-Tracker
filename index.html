@@ -13,6 +13,17 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Gradient for Fear & Greed Meter */
+        .fng-gradient {
+            background: linear-gradient(90deg, 
+                #ef4444 0%,   /* Red (Extreme Fear) */
+                #f97316 25%,  /* Orange (Fear) */
+                #eab308 50%,  /* Yellow (Neutral) */
+                #84cc16 75%,  /* Lime (Greed) */
+                #22c55e 100%  /* Green (Extreme Greed) */
+            );
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
@@ -42,9 +53,9 @@
                 <h1 class="text-3xl font-bold mb-2">Market Overview</h1>
                 <p class="text-gray-400">Live prices</p>
             </div>
-            <div class="text-right">
+            <!-- <div class="text-right">
                 <div class="text-xs text-gray-500 font-mono">Rate Limit Safe: 5m Interval</div>
-            </div>
+            </div> -->
         </div>
 
         <div id="error-container" class="hidden mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3" role="alert">
@@ -55,7 +66,8 @@
             </div>
         </div>
 
-        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+        <!-- COIN TABLE -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl mb-8">
             <div class="overflow-x-auto scrollbar-hide">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -82,33 +94,58 @@
                 </table>
             </div>
         </div>
+
+        <!-- FEAR & GREED METER -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <!-- Text Info -->
+                <div class="text-center md:text-left">
+                    <h2 class="text-lg font-semibold text-gray-200 mb-1">Crypto Fear & Greed Index</h2>
+                    <p class="text-sm text-gray-400">Global Market Sentiment (BTC)</p>
+                </div>
+
+                <!-- Value Display -->
+                <div class="text-center">
+                    <div id="fng-value" class="text-4xl font-bold text-gray-100">--</div>
+                    <div id="fng-text" class="text-sm font-medium uppercase tracking-wide text-gray-500">Loading...</div>
+                </div>
+
+                <!-- The Meter -->
+                <div class="w-full md:w-1/2 lg:w-1/3">
+                    <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                        <div class="absolute top-0 left-0 h-full w-full fng-gradient opacity-80"></div>
+                        <!-- Marker -->
+                        <div id="fng-marker" class="absolute top-0 h-full w-1 bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all duration-1000 ease-out" style="left: 50%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-2 font-mono">
+                        <span>Fear (0)</span>
+                        <span>Neutral (50)</span>
+                        <span>Greed (100)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-center md:text-right text-xs text-gray-600">
+                Source: <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" class="hover:text-blue-400">alternative.me</a>
+            </div>
+        </div>
+
     </main>
 
     <script>
         // --- CONFIGURATION ---
         
         // SET TO TRUE FOR VERCEL DEPLOYMENT
-        // This ensures the app calls your secure /api/stats endpoint instead of exposing your key.
+        // This ensures the app calls your secure backend APIs
         const USE_PROXY = true; 
         
-        // This key is ONLY used if USE_PROXY is set to false (for local testing without backend)
+        // Local fallback key (Only used if USE_PROXY = false)
         const DIRECT_API_KEY = ""; 
 
-        // 5 Minutes in milliseconds (Optimal for 9k calls/month limit)
-        const REFRESH_INTERVAL = 300000; 
+        const REFRESH_INTERVAL = 300000; // 5 Minutes
 
-        // Specific Coin Order (Must match the list in api/stats.js)
         const orderedCoinIds = [
-            'bitcoin',      // BTC
-            'ethereum',     // ETH
-            'solana',       // SOL
-            'lido-dao',     // LDO
-            'ether-fi',     // ETHFI
-            'celestia',     // TIA
-            'eigencloud',   // EIGEN
-            'ssv-network',  // SSV
-            'rocket-pool',  // RPL
-            'obol-2'        // OBOL
+            'bitcoin', 'ethereum', 'solana', 'lido-dao', 'ether-fi', 
+            'celestia', 'eigencloud', 'ssv-network', 'rocket-pool', 'obol-2'
         ];
 
         // --- FETCH LOGIC ---
@@ -121,15 +158,13 @@
             refreshBtn.classList.add('fa-spin');
             
             try {
+                // 1. Fetch Coins
                 let data;
-
                 if (USE_PROXY) {
-                    // Call our own secure backend
                     const response = await fetch('/api/stats');
                     if (!response.ok) throw new Error("Failed to fetch data. Ensure your API key is set in Vercel.");
                     data = await response.json();
                 } else {
-                    // Direct Call (For Local Testing Only)
                     if (!DIRECT_API_KEY) throw new Error("No API Key provided for direct access.");
                     const coinsParam = orderedCoinIds.join(',');
                     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinsParam}&order=market_cap_desc&sparkline=true&price_change_percentage=24h&x_cg_demo_api_key=${DIRECT_API_KEY}`;
@@ -142,16 +177,17 @@
                     data = await response.json();
                 }
 
+                // 2. Render Table
                 errorContainer.classList.add('hidden');
                 tableBody.innerHTML = ''; 
-
-                // Sort data to match the specific order requested
                 const coinMap = new Map(data.map(coin => [coin.id, coin]));
-                
                 orderedCoinIds.forEach(id => {
                     const coin = coinMap.get(id);
                     if (coin) renderRow(coin, tableBody);
                 });
+
+                // 3. Fetch Sentiment (Fear & Greed)
+                fetchSentiment();
 
                 resetTimer();
 
@@ -161,6 +197,49 @@
                 errorContainer.classList.remove('hidden');
             } finally {
                 refreshBtn.classList.remove('fa-spin');
+            }
+        }
+
+        async function fetchSentiment() {
+            try {
+                let json;
+                if (USE_PROXY) {
+                    // Use our new local proxy
+                    const res = await fetch('/api/sentiment');
+                    if (!res.ok) throw new Error("Proxy error");
+                    json = await res.json();
+                } else {
+                    // Direct fetch (often blocked by CORS)
+                    const res = await fetch('https://api.alternative.me/fng/?limit=1');
+                    json = await res.json();
+                }
+                
+                const item = json.data[0];
+                const value = parseInt(item.value);
+                const text = item.value_classification;
+
+                // Update UI
+                const valEl = document.getElementById('fng-value');
+                const textEl = document.getElementById('fng-text');
+                const markerEl = document.getElementById('fng-marker');
+
+                valEl.innerText = value;
+                textEl.innerText = text;
+                
+                // Colorize text
+                if (value < 25) textEl.className = 'text-sm font-bold uppercase tracking-wide text-red-500';
+                else if (value < 45) textEl.className = 'text-sm font-bold uppercase tracking-wide text-orange-400';
+                else if (value < 55) textEl.className = 'text-sm font-bold uppercase tracking-wide text-yellow-400';
+                else if (value < 75) textEl.className = 'text-sm font-bold uppercase tracking-wide text-lime-400';
+                else textEl.className = 'text-sm font-bold uppercase tracking-wide text-green-500';
+
+                // Move marker
+                markerEl.style.left = `${value}%`;
+
+            } catch (e) {
+                console.warn("Failed to fetch Fear & Greed index", e);
+                document.getElementById('fng-text').innerText = "Unavailable";
+                document.getElementById('fng-value').innerText = "--";
             }
         }
 
