@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Market Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <i class="fa-solid fa-coins text-white text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight">CoinTracker</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="next-update" class="text-xs text-gray-400 hidden sm:block">Next update in: 5m</span>
+                    <button onclick="manualRefresh()" class="p-2 rounded-full hover:bg-gray-700 transition-colors text-blue-400" title="Refresh Data">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">Market Overview</h1>
+                <p class="text-gray-400">Live prices</p>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-gray-500 font-mono">Rate Limit Safe: 5m Interval</div>
+            </div>
+        </div>
+
+        <div id="error-container" class="hidden mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3" role="alert">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div>
+                <span class="font-bold">Error:</span>
+                <span id="error-message">Something went wrong.</span>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+            <div class="overflow-x-auto scrollbar-hide">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-750 text-gray-400 text-sm uppercase tracking-wider border-b border-gray-700">
+                            <th class="p-4 font-semibold">Asset</th>
+                            <th class="p-4 font-semibold text-right">Price</th>
+                            <th class="p-4 font-semibold text-right">24h Change</th>
+                            <th class="p-4 font-semibold text-right hidden md:table-cell">Market Cap</th>
+                            <th class="p-4 font-semibold text-right hidden lg:table-cell">24h Volume</th>
+                            <th class="p-4 font-semibold text-right hidden sm:table-cell">Last 7 Days</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coin-table-body" class="divide-y divide-gray-700 text-sm">
+                        <!-- Skeletons -->
+                        <tr class="animate-pulse">
+                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-32"></div></td>
+                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-20 ml-auto"></div></td>
+                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-16 ml-auto"></div></td>
+                            <td class="p-4 hidden md:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
+                            <td class="p-4 hidden lg:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
+                            <td class="p-4 hidden sm:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- CONFIGURATION ---
+        
+        // SET TO TRUE FOR VERCEL DEPLOYMENT
+        // This ensures the app calls your secure /api/stats endpoint instead of exposing your key.
+        const USE_PROXY = true; 
+        
+        // This key is ONLY used if USE_PROXY is set to false (for local testing without backend)
+        const DIRECT_API_KEY = ""; 
+
+        // 5 Minutes in milliseconds (Optimal for 9k calls/month limit)
+        const REFRESH_INTERVAL = 300000; 
+
+        // Specific Coin Order (Must match the list in api/stats.js)
+        const orderedCoinIds = [
+            'bitcoin',      // BTC
+            'ethereum',     // ETH
+            'solana',       // SOL
+            'lido-dao',     // LDO
+            'ether-fi',     // ETHFI
+            'celestia',     // TIA
+            'eigencloud',   // EIGEN
+            'ssv-network',  // SSV
+            'rocket-pool',  // RPL
+            'obol-2'        // OBOL
+        ];
+
+        // --- FETCH LOGIC ---
+        async function fetchData() {
+            const tableBody = document.getElementById('coin-table-body');
+            const errorContainer = document.getElementById('error-container');
+            const errorMessage = document.getElementById('error-message');
+            const refreshBtn = document.querySelector('.fa-rotate');
+
+            refreshBtn.classList.add('fa-spin');
+            
+            try {
+                let data;
+
+                if (USE_PROXY) {
+                    // Call our own secure backend
+                    const response = await fetch('/api/stats');
+                    if (!response.ok) throw new Error("Failed to fetch data. Ensure your API key is set in Vercel.");
+                    data = await response.json();
+                } else {
+                    // Direct Call (For Local Testing Only)
+                    if (!DIRECT_API_KEY) throw new Error("No API Key provided for direct access.");
+                    const coinsParam = orderedCoinIds.join(',');
+                    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinsParam}&order=market_cap_desc&sparkline=true&price_change_percentage=24h&x_cg_demo_api_key=${DIRECT_API_KEY}`;
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        if (response.status === 429) throw new Error("Rate limit exceeded. Please wait.");
+                        throw new Error(`API Error: ${response.statusText}`);
+                    }
+                    data = await response.json();
+                }
+
+                errorContainer.classList.add('hidden');
+                tableBody.innerHTML = ''; 
+
+                // Sort data to match the specific order requested
+                const coinMap = new Map(data.map(coin => [coin.id, coin]));
+                
+                orderedCoinIds.forEach(id => {
+                    const coin = coinMap.get(id);
+                    if (coin) renderRow(coin, tableBody);
+                });
+
+                resetTimer();
+
+            } catch (error) {
+                console.error(error);
+                errorMessage.innerText = error.message;
+                errorContainer.classList.remove('hidden');
+            } finally {
+                refreshBtn.classList.remove('fa-spin');
+            }
+        }
+
+        function renderRow(coin, container) {
+            const priceChange = coin.price_change_percentage_24h;
+            const isPositive = priceChange >= 0;
+            const colorClass = isPositive ? 'text-green-400' : 'text-red-400';
+            const iconClass = isPositive ? 'fa-caret-up' : 'fa-caret-down';
+            const sparklineColor = isPositive ? '#4ade80' : '#f87171';
+            const sparklineSvg = generateSparkline(coin.sparkline_in_7d?.price, sparklineColor);
+
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-750 transition-colors border-b border-gray-700/50 fade-in';
+            row.innerHTML = `
+                <td class="p-4">
+                    <div class="flex items-center gap-3">
+                        <img src="${coin.image}" alt="${coin.name}" class="w-8 h-8 rounded-full shadow-sm bg-gray-700" onerror="this.src='https://placehold.co/32x32/gray/white?text=?'">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-gray-100">${coin.name}</span>
+                            <span class="text-xs text-gray-500 uppercase">${coin.symbol}</span>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-4 text-right font-medium text-gray-100">
+                    ${formatCurrency(coin.current_price)}
+                </td>
+                <td class="p-4 text-right">
+                    <div class="flex items-center justify-end gap-1 ${colorClass}">
+                        <i class="fa-solid ${iconClass} text-xs"></i>
+                        <span class="font-bold">${formatPercentage(priceChange)}</span>
+                    </div>
+                </td>
+                <td class="p-4 text-right text-gray-400 hidden md:table-cell font-mono text-sm">
+                    ${formatCompactNumber(coin.market_cap)}
+                </td>
+                <td class="p-4 text-right text-gray-400 hidden lg:table-cell font-mono text-sm">
+                    ${formatCompactNumber(coin.total_volume)}
+                </td>
+                 <td class="p-4 hidden sm:table-cell w-32">
+                    ${sparklineSvg}
+                </td>
+            `;
+            container.appendChild(row);
+        }
+
+        // --- UTILITIES ---
+        const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: num < 1 ? 4 : 2 }).format(num);
+        const formatCompactNumber = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact' }).format(num);
+        const formatPercentage = (num) => num ? `${num.toFixed(2)}%` : '0.00%';
+
+        function generateSparkline(data, color) {
+            if (!data || data.length === 0) return '';
+            const width = 120, height = 40;
+            const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+            const points = data.map((p, i) => `${(i / (data.length - 1)) * width},${height - ((p - min) / range) * height}`).join(' ');
+            return `<svg width="${width}" height="${height}" fill="none"><polyline points="${points}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        }
+
+        // --- TIMER LOGIC ---
+        let nextFetchTime = Date.now() + REFRESH_INTERVAL;
+        let timerInterval;
+
+        function updateTimerDisplay() {
+            const now = Date.now();
+            const diff = Math.max(0, nextFetchTime - now);
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            document.getElementById('next-update').innerText = `Next update: ${minutes}m ${seconds}s`;
+            
+            if (diff <= 0) {
+                fetchData();
+            }
+        }
+
+        function resetTimer() {
+            nextFetchTime = Date.now() + REFRESH_INTERVAL;
+        }
+
+        function manualRefresh() {
+            fetchData();
+            resetTimer(); 
+        }
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        });
+
+    </script>
+</body>
+</html>
