@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Market Dashboard</title>
+    <title>MoonTracker Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -28,14 +28,15 @@
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
 
+    <!-- Navbar -->
     <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <div class="bg-blue-600 p-2 rounded-lg">
-                        <i class="fa-solid fa-coins text-white text-xl"></i>
+                    <div class="bg-gray-700 p-2 rounded-lg text-2xl leading-none">
+                        🌚
                     </div>
-                    <span class="font-bold text-xl tracking-tight">CoinTracker</span>
+                    <span class="font-bold text-xl tracking-tight">MoonTracker</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <span id="next-update" class="text-xs text-gray-400 hidden sm:block">Next update in: 5m</span>
@@ -51,11 +52,8 @@
         <div class="mb-8 flex justify-between items-end">
             <div>
                 <h1 class="text-3xl font-bold mb-2">Market Overview</h1>
-                <p class="text-gray-400">Live prices</p>
+                <p class="text-gray-400">Live prices via CoinGecko</p>
             </div>
-            <!-- <div class="text-right">
-                <div class="text-xs text-gray-500 font-mono">Rate Limit Safe: 5m Interval</div>
-            </div> -->
         </div>
 
         <div id="error-container" class="hidden mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3" role="alert">
@@ -101,31 +99,35 @@
                 <!-- Text Info -->
                 <div class="text-center md:text-left">
                     <h2 class="text-lg font-semibold text-gray-200 mb-1">Crypto Fear & Greed Index</h2>
-                    <p class="text-sm text-gray-400">Global Market Sentiment (BTC)</p>
+                    <p class="text-sm text-gray-400">Global Market Sentiment</p>
                 </div>
 
                 <!-- Value Display -->
                 <div class="text-center">
-                    <div id="fng-value" class="text-4xl font-bold text-gray-100">--</div>
-                    <div id="fng-text" class="text-sm font-medium uppercase tracking-wide text-gray-500">Loading...</div>
+                    <div class="flex items-center justify-center gap-2">
+                        <span id="fng-value" class="text-4xl font-bold text-gray-100">--</span>
+                    </div>
+                    <div id="fng-text" class="text-sm font-medium uppercase tracking-wide text-gray-500 mt-1">Loading...</div>
                 </div>
 
                 <!-- The Meter -->
                 <div class="w-full md:w-1/2 lg:w-1/3">
-                    <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden shadow-inner">
-                        <div class="absolute top-0 left-0 h-full w-full fng-gradient opacity-80"></div>
-                        <!-- Marker -->
-                        <div id="fng-marker" class="absolute top-0 h-full w-1 bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all duration-1000 ease-out" style="left: 50%"></div>
+                    <div class="relative h-10 flex items-center">
+                        <!-- The Bar -->
+                        <div class="w-full h-4 rounded-full fng-gradient opacity-80 shadow-inner"></div>
+                        
+                        <!-- The Emoji Marker (Absolute) -->
+                        <div id="fng-marker" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-3xl transition-all duration-1000 ease-out filter drop-shadow-lg" style="left: 50%">
+                            🌓
+                        </div>
                     </div>
-                    <div class="flex justify-between text-xs text-gray-500 mt-2 font-mono">
+                    <!-- Legend Text -->
+                    <div class="flex justify-between text-xs text-gray-500 font-mono">
                         <span>Fear (0)</span>
                         <span>Neutral (50)</span>
                         <span>Greed (100)</span>
                     </div>
                 </div>
-            </div>
-            <div class="mt-4 text-center md:text-right text-xs text-gray-600">
-                Source: <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" class="hover:text-blue-400">alternative.me</a>
             </div>
         </div>
 
@@ -135,7 +137,6 @@
         // --- CONFIGURATION ---
         
         // SET TO TRUE FOR VERCEL DEPLOYMENT
-        // This ensures the app calls your secure backend APIs
         const USE_PROXY = true; 
         
         // Local fallback key (Only used if USE_PROXY = false)
@@ -204,12 +205,10 @@
             try {
                 let json;
                 if (USE_PROXY) {
-                    // Use our new local proxy
                     const res = await fetch('/api/sentiment');
                     if (!res.ok) throw new Error("Proxy error");
                     json = await res.json();
                 } else {
-                    // Direct fetch (often blocked by CORS)
                     const res = await fetch('https://api.alternative.me/fng/?limit=1');
                     json = await res.json();
                 }
@@ -225,15 +224,33 @@
 
                 valEl.innerText = value;
                 textEl.innerText = text;
-                
-                // Colorize text
-                if (value < 25) textEl.className = 'text-sm font-bold uppercase tracking-wide text-red-500';
-                else if (value < 45) textEl.className = 'text-sm font-bold uppercase tracking-wide text-orange-400';
-                else if (value < 55) textEl.className = 'text-sm font-bold uppercase tracking-wide text-yellow-400';
-                else if (value < 75) textEl.className = 'text-sm font-bold uppercase tracking-wide text-lime-400';
-                else textEl.className = 'text-sm font-bold uppercase tracking-wide text-green-500';
 
-                // Move marker
+                // Moon Phase Logic (Ranges: 0-24, 25-44, 45-54, 55-74, 75-100)
+                let moonEmoji = '🌓';
+                let colorClass = 'text-yellow-400';
+
+                if (value < 25) {
+                    moonEmoji = '🌚'; // Extreme Fear
+                    colorClass = 'text-red-500';
+                } else if (value < 45) {
+                    moonEmoji = '🌒'; // Fear
+                    colorClass = 'text-orange-400';
+                } else if (value < 55) {
+                    moonEmoji = '🌓'; // Neutral
+                    colorClass = 'text-yellow-400';
+                } else if (value < 75) {
+                    moonEmoji = '🌔'; // Greed
+                    colorClass = 'text-lime-400';
+                } else {
+                    moonEmoji = '🌝'; // Extreme Greed
+                    colorClass = 'text-green-500';
+                }
+
+                // Update text color
+                textEl.className = `text-sm font-bold uppercase tracking-wide ${colorClass} mt-1`;
+
+                // Update Marker Emoji and Position
+                markerEl.innerText = moonEmoji;
                 markerEl.style.left = `${value}%`;
 
             } catch (e) {
