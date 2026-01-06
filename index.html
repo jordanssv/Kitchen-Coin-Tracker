@@ -70,6 +70,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-750 text-gray-400 text-sm uppercase tracking-wider border-b border-gray-700">
+                            <th class="p-4 font-semibold text-right w-12">#</th>
                             <th class="p-4 font-semibold">Asset</th>
                             <th class="p-4 font-semibold text-right">Price</th>
                             <th class="p-4 font-semibold text-right">24h Change</th>
@@ -81,6 +82,7 @@
                     <tbody id="coin-table-body" class="divide-y divide-gray-700 text-sm">
                         <!-- Skeletons -->
                         <tr class="animate-pulse">
+                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-6 ml-auto"></div></td>
                             <td class="p-4"><div class="h-4 bg-gray-700 rounded w-32"></div></td>
                             <td class="p-4"><div class="h-4 bg-gray-700 rounded w-20 ml-auto"></div></td>
                             <td class="p-4"><div class="h-4 bg-gray-700 rounded w-16 ml-auto"></div></td>
@@ -146,7 +148,7 @@
 
         const orderedCoinIds = [
             'bitcoin', 'ethereum', 'solana', 'lido-dao', 'ether-fi', 
-            'celestia', 'eigencloud', 'ssv-network', 'rocket-pool', 'obol-2'
+            'celestia', 'eigenlayer', 'ssv-network', 'rocket-pool', 'obol-2'
         ];
 
         // --- FETCH LOGIC ---
@@ -271,6 +273,9 @@
             const row = document.createElement('tr');
             row.className = 'hover:bg-gray-750 transition-colors border-b border-gray-700/50 fade-in';
             row.innerHTML = `
+                <td class="p-4 text-right text-gray-400 font-mono text-sm">
+                    ${coin.market_cap_rank ?? '--'}
+                </td>
                 <td class="p-4">
                     <div class="flex items-center gap-3">
                         <img src="${coin.image}" alt="${coin.name}" class="w-8 h-8 rounded-full shadow-sm bg-gray-700" onerror="this.src='https://placehold.co/32x32/gray/white?text=?'">

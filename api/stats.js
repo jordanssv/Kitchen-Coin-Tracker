@@ -19,7 +19,7 @@ export default async function handler(request, response) {
         'lido-dao',
         'ether-fi',
         'celestia',
-        'eigencloud',
+        'eigenlayer',
         'ssv-network',
         'rocket-pool',
         'obol-2'
