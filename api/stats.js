@@ -36,9 +36,9 @@ export default async function handler(request, response) {
 
         const data = await fetchResponse.json();
 
-        // Set Cache-Control to 5 minutes (300 seconds) to match your rate limit plan
+        // Set Cache-Control to 10 minutes (600 seconds) to match your rate limit plan
         // This prevents the server function from running too often if many users visit the site
-        response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
         
         return response.status(200).json(data);
 

@@ -3,153 +3,427 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MoonTracker Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>MoonTracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gloock&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Gradient for Fear & Greed Meter */
-        .fng-gradient {
-            background: linear-gradient(90deg, 
-                #ef4444 0%,   /* Red (Extreme Fear) */
-                #f97316 25%,  /* Orange (Fear) */
-                #eab308 50%,  /* Yellow (Neutral) */
-                #84cc16 75%,  /* Lime (Greed) */
-                #22c55e 100%  /* Green (Extreme Greed) */
-            );
+        :root {
+            --night: #1c2230;
+            --night-raised: #232a3b;
+            --rule: #323b52;
+            --moonlight: #ece7d8;
+            --dust: #8d95a8;
+            --lamp: #e9c46a;
+            --rise: #8cc7a1;
+            --fall: #e58a7b;
+
+            --serif: 'Gloock', 'Times New Roman', serif;
+            --sans: 'Hanken Grotesk', system-ui, sans-serif;
+
+            --gutter: clamp(16px, 4vw, 48px);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--night);
+            color: var(--moonlight);
+            font-family: var(--sans);
+            font-size: 15px;
+            line-height: 1.5;
+            font-variant-numeric: tabular-nums;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a, button { color: inherit; }
+
+        :focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; }
+
+        .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--gutter); }
+
+        /* Masthead */
+        .masthead {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 36px 0 28px;
+        }
+
+        .wordmark {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            font-family: var(--serif);
+            font-weight: 400;
+            font-size: clamp(30px, 5vw, 44px);
+            letter-spacing: -0.01em;
+            line-height: 1;
+        }
+
+        .wordmark img { width: 0.8em; height: 0.8em; }
+
+        .status { display: flex; flex-shrink: 0; align-items: center; gap: 12px; color: var(--dust); font-size: 13px; }
+
+        .refresh {
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--rule);
+            border-radius: 50%;
+            background: none;
+            cursor: pointer;
+        }
+
+        .refresh:hover { border-color: var(--dust); }
+        .refresh svg { width: 15px; height: 15px; }
+        .refresh.spinning svg { animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Sections */
+        section { padding: 40px 0; border-top: 1px solid var(--rule); }
+
+        h2 {
+            margin: 0 0 24px;
+            font-family: var(--serif);
+            font-weight: 400;
+            font-size: 26px;
+            line-height: 1.2;
+        }
+
+        .source { color: var(--dust); font-size: 13px; }
+
+        .section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 24px; }
+        .section-head h2 { margin: 0; }
+
+        .error {
+            margin: 0 0 24px;
+            padding: 12px 16px;
+            border-left: 3px solid var(--fall);
+            background: var(--night-raised);
+            color: var(--moonlight);
+        }
+
+        .error[hidden] { display: none; }
+
+        /* Watchlist */
+        .table-scroll { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            padding: 0 12px 12px;
+            color: var(--dust);
+            font-weight: 500;
+            font-size: 13px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        td { padding: 14px 12px; border-top: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+
+        th:first-child, td:first-child { padding-left: 0; width: 32px; color: var(--dust); }
+        th:last-child, td:last-child { padding-right: 0; }
+        .col-asset { text-align: left; white-space: normal; min-width: 140px; }
+
+        .asset { display: flex; align-items: center; gap: 12px; }
+        .asset img { width: 28px; height: 28px; border-radius: 50%; }
+        .asset-name { font-weight: 600; }
+        .asset-symbol { color: var(--dust); margin-left: 6px; }
+
+        .price { font-weight: 500; }
+        .muted { color: var(--dust); }
+        .rise { color: var(--rise); }
+        .fall { color: var(--fall); }
+
+        .spark { display: block; margin-left: auto; }
+
+        .skeleton td { color: transparent; }
+        .skeleton span { display: inline-block; height: 12px; width: 60%; border-radius: 2px; background: var(--night-raised); }
+
+        @media (max-width: 860px) { .hide-md { display: none; } }
+        @media (max-width: 600px) {
+            .hide-sm { display: none; }
+            .masthead { align-items: center; }
+            #next-update { display: none; }
+            th:first-child, td:first-child { display: none; }
+            .chart text { font-size: 22px; }
+        }
+
+        /* Sentiment: the moon */
+        .sentiment > *, .staking > * { min-width: 0; }
+
+        .sentiment {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: clamp(24px, 6vw, 72px);
+            align-items: center;
+        }
+
+        .moon { width: clamp(120px, 22vw, 160px); height: auto; display: block; }
+
+        .reading { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+
+        .reading-value {
+            font-family: var(--serif);
+            font-size: clamp(64px, 11vw, 112px);
+            line-height: 0.9;
+        }
+
+        .reading-label { font-size: 20px; font-weight: 500; }
+
+        .scale { position: relative; margin-top: 28px; max-width: 520px; }
+
+        .scale-bands { display: grid; grid-template-columns: 25fr 20fr 10fr 20fr 26fr; gap: 3px; height: 6px; }
+        .scale-bands span { background: var(--rule); border-radius: 1px; }
+        .scale-bands span.active { background: var(--lamp); }
+
+        .scale-pin {
+            position: absolute;
+            top: -5px;
+            width: 2px;
+            height: 16px;
+            background: var(--moonlight);
+            transform: translateX(-1px);
+            transition: left 1.2s ease;
+        }
+
+        .scale-ends { display: flex; justify-content: space-between; margin-top: 10px; color: var(--dust); font-size: 13px; }
+
+        @media (max-width: 600px) { .sentiment { grid-template-columns: 1fr; } }
+
+        /* SSV staking */
+        .staking { display: grid; grid-template-columns: minmax(220px, 1fr) 2.2fr; gap: clamp(24px, 5vw, 64px); }
+
+        .figure + .figure { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--rule); }
+        .figure-label { color: var(--dust); font-size: 14px; }
+        .figure-value { font-family: var(--serif); font-size: clamp(44px, 6vw, 60px); line-height: 1.05; }
+        .figure-unit { font-family: var(--sans); font-size: 18px; color: var(--dust); margin-left: 6px; }
+        .figure-note { color: var(--dust); font-size: 13px; margin-top: 4px; }
+
+        .chart-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+        .chart-title span:first-child { font-weight: 500; }
+
+        .chart { width: 100%; height: auto; display: block; overflow: visible; }
+        .chart .grid { stroke: var(--rule); stroke-width: 1; }
+        .chart .line { fill: none; stroke: var(--lamp); stroke-width: 2; stroke-linejoin: round; }
+        .chart .dot { fill: var(--night); stroke: var(--lamp); stroke-width: 2; }
+        .chart .dot-last { fill: var(--lamp); }
+        .chart text { fill: var(--dust); font-family: var(--sans); font-size: 13px; }
+        .chart .value-label { fill: var(--moonlight); font-weight: 500; }
+
+        @media (max-width: 760px) { .staking { grid-template-columns: 1fr; } }
+
+
+        /* Portrait TV, 1080x1920: one screen, no scroll, read from across the room */
+        @media (min-width: 900px) and (orientation: portrait) {
+            body { font-size: 22px; }
+
+            .wrap {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                max-width: none;
+                padding: 0 56px;
+                overflow: hidden;
+            }
+
+            .masthead { padding: 40px 0 24px; }
+            .wordmark { font-size: 60px; }
+            .status { font-size: 18px; }
+
+            section { padding: 0; display: flex; flex-direction: column; justify-content: center; }
+            section:nth-of-type(1) { flex: 1 1 auto; padding-top: 32px; justify-content: flex-start; }
+            section:nth-of-type(2) { flex: 0 0 330px; }
+            section:nth-of-type(3) { flex: 0 0 480px; }
+
+            h2 { font-size: 40px; }
+            .section-head { margin-bottom: 24px; }
+            .source { font-size: 18px; }
+
+            th { font-size: 18px; padding-bottom: 14px; }
+            td { padding: 18px 12px; }
+            .asset img { width: 36px; height: 36px; }
+            .spark { width: 150px; height: 40px; }
+
+            .moon { width: 200px; }
+            .reading-value { font-size: 150px; }
+            .reading-label { font-size: 30px; }
+            .scale { max-width: 600px; }
+            .scale-bands { height: 8px; }
+            .scale-ends { font-size: 18px; }
+
+            .figure-label { font-size: 22px; }
+            .figure-value { font-size: 72px; }
+            .figure-unit { font-size: 26px; }
+            .figure-note { font-size: 18px; }
+            .chart text { font-size: 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+<body>
 
-    <!-- Navbar -->
-    <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="bg-gray-700 p-2 rounded-lg">
-                        <img src="assets/new-moon-with-face.png" alt="MoonTracker logo" class="block" style="width:1.5rem;height:1.5rem;">
-                    </div>
-                    <span class="font-bold text-xl tracking-tight">MoonTracker</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="next-update" class="text-xs text-gray-400 hidden sm:block">Next update in: 5m</span>
-                    <button onclick="manualRefresh()" class="p-2 rounded-full hover:bg-gray-700 transition-colors text-blue-400" title="Refresh Data">
-                        <i class="fa-solid fa-rotate"></i>
-                    </button>
-                </div>
+    <div class="wrap">
+
+        <header class="masthead">
+            <h1 class="wordmark">
+                <img src="assets/new-moon-with-face.png" alt="">
+                MoonTracker
+            </h1>
+            <div class="status">
+                <span id="next-update" aria-live="polite">Next update in 10:00</span>
+                <button id="refresh-btn" class="refresh" onclick="manualRefresh()" title="Refresh prices" aria-label="Refresh prices">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                </button>
             </div>
-        </div>
-    </nav>
+        </header>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-8 flex justify-between items-end">
-            <div>
-                <h1 class="text-3xl font-bold mb-2">Market Overview</h1>
-                <p class="text-gray-400">Live prices via CoinGecko</p>
+        <!-- WATCHLIST -->
+        <section aria-labelledby="watchlist-title">
+            <div class="section-head">
+                <h2 id="watchlist-title">Watchlist</h2>
+                <span class="source">Prices from CoinGecko</span>
             </div>
-        </div>
 
-        <div id="error-container" class="hidden mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3" role="alert">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <div>
-                <span class="font-bold">Error:</span>
-                <span id="error-message">Something went wrong.</span>
-            </div>
-        </div>
+            <p id="error-container" class="error" role="alert" hidden>
+                <span id="error-message"></span>
+            </p>
 
-        <!-- COIN TABLE -->
-        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl mb-8">
-            <div class="overflow-x-auto scrollbar-hide">
-                <table class="w-full text-left border-collapse">
+            <div class="table-scroll">
+                <table>
                     <thead>
-                        <tr class="bg-gray-750 text-gray-400 text-sm uppercase tracking-wider border-b border-gray-700">
-                            <th class="p-4 font-semibold text-right w-12">#</th>
-                            <th class="p-4 font-semibold">Asset</th>
-                            <th class="p-4 font-semibold text-right">Price</th>
-                            <th class="p-4 font-semibold text-right">24h Change</th>
-                            <th class="p-4 font-semibold text-right hidden md:table-cell">Market Cap</th>
-                            <th class="p-4 font-semibold text-right hidden lg:table-cell">24h Volume</th>
-                            <th class="p-4 font-semibold text-right hidden sm:table-cell">Last 7 Days</th>
+                        <tr>
+                            <th>#</th>
+                            <th class="col-asset">Asset</th>
+                            <th>Price</th>
+                            <th>24h</th>
+                            <th class="hide-md">Market cap</th>
+                            <th class="hide-md">Volume 24h</th>
+                            <th class="hide-sm">7 days</th>
                         </tr>
                     </thead>
-                    <tbody id="coin-table-body" class="divide-y divide-gray-700 text-sm">
-                        <!-- Skeletons -->
-                        <tr class="animate-pulse">
-                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-6 ml-auto"></div></td>
-                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-32"></div></td>
-                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-20 ml-auto"></div></td>
-                            <td class="p-4"><div class="h-4 bg-gray-700 rounded w-16 ml-auto"></div></td>
-                            <td class="p-4 hidden md:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
-                            <td class="p-4 hidden lg:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
-                            <td class="p-4 hidden sm:table-cell"><div class="h-4 bg-gray-700 rounded w-24 ml-auto"></div></td>
+                    <tbody id="coin-table-body">
+                        <tr class="skeleton">
+                            <td><span></span></td>
+                            <td class="col-asset"><span></span></td>
+                            <td><span></span></td>
+                            <td><span></span></td>
+                            <td class="hide-md"><span></span></td>
+                            <td class="hide-md"><span></span></td>
+                            <td class="hide-sm"><span></span></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <!-- FEAR & GREED METER -->
-        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                <!-- Text Info -->
-                <div class="text-center md:text-left">
-                    <h2 class="text-lg font-semibold text-gray-200 mb-1">Crypto Fear & Greed Index</h2>
-                    <p class="text-sm text-gray-400">Global Market Sentiment</p>
-                </div>
+        <!-- FEAR & GREED -->
+        <section aria-labelledby="sentiment-title">
+            <div class="section-head">
+                <h2 id="sentiment-title">Market mood</h2>
+                <span class="source">Fear &amp; Greed Index, alternative.me</span>
+            </div>
 
-                <!-- Value Display -->
-                <div class="text-center">
-                    <div class="flex items-center justify-center gap-2">
-                        <span id="fng-value" class="text-4xl font-bold text-gray-100">--</span>
+            <div class="sentiment">
+                <img id="fng-moon" class="moon" src="assets/first-quarter-moon.png" alt="">
+
+                <div>
+                    <div class="reading">
+                        <span id="fng-value" class="reading-value">--</span>
+                        <span id="fng-text" class="reading-label muted">Loading</span>
                     </div>
-                    <div id="fng-text" class="text-sm font-medium uppercase tracking-wide text-gray-500 mt-1">Loading...</div>
-                </div>
 
-                <!-- The Meter -->
-                <div class="w-full md:w-1/2 lg:w-1/3">
-                    <div class="relative h-10 flex items-center">
-                        <!-- The Bar -->
-                        <div class="w-full h-4 rounded-full fng-gradient opacity-80 shadow-inner"></div>
-                        
-                        <!-- The Emoji Marker (Absolute) -->
-                        <div id="fng-marker" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-3xl transition-all duration-1000 ease-out filter drop-shadow-lg" style="left: 50%">
-                            🌓
+                    <div class="scale">
+                        <div class="scale-bands" id="fng-bands">
+                            <span title="Extreme fear"></span>
+                            <span title="Fear"></span>
+                            <span title="Neutral"></span>
+                            <span title="Greed"></span>
+                            <span title="Extreme greed"></span>
                         </div>
-                    </div>
-                    <!-- Legend Text -->
-                    <div class="flex justify-between text-xs text-gray-500 font-mono">
-                        <span>Fear (0)</span>
-                        <span>Neutral (50)</span>
-                        <span>Greed (100)</span>
+                        <div id="fng-pin" class="scale-pin" style="left: 50%"></div>
+                        <div class="scale-ends">
+                            <span>Fear 0</span>
+                            <span>100 Greed</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-    </main>
+        <!-- SSV STAKING -->
+        <section aria-labelledby="ssv-title">
+            <div class="section-head">
+                <h2 id="ssv-title">SSV staking</h2>
+                <span class="source" id="ssv-updated">ssv.network</span>
+            </div>
+
+            <div class="staking">
+                <div>
+                    <div class="figure">
+                        <div class="figure-label">Current APR</div>
+                        <div class="figure-value"><span id="ssv-apr">--</span><span class="figure-unit">%</span></div>
+                        <div class="figure-note" id="ssv-apr-projected"></div>
+                    </div>
+                    <div class="figure">
+                        <div class="figure-label">Total staked</div>
+                        <div class="figure-value"><span id="ssv-staked">--</span><span class="figure-unit">ETH</span></div>
+                        <div class="figure-note" id="ssv-clusters"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="chart-title">
+                        <span>APR, last 7 days</span>
+                        <span class="source" id="ssv-range"></span>
+                    </div>
+                    <svg id="ssv-chart" class="chart" viewBox="0 0 640 240" role="img" aria-label="Daily average APR over the last 7 days"></svg>
+                </div>
+            </div>
+        </section>
+
+    </div>
 
     <script>
         // --- CONFIGURATION ---
-        
-        // SET TO TRUE FOR VERCEL DEPLOYMENT
-        const USE_PROXY = true; 
-        
-        // Local fallback key (Only used if USE_PROXY = false)
-        const DIRECT_API_KEY = ""; 
 
-        const REFRESH_INTERVAL = 300000; // 5 Minutes
-        const NEW_MOON_IMAGE = 'assets/new-moon-with-face.png';
+        // SET TO TRUE FOR VERCEL DEPLOYMENT
+        const USE_PROXY = true;
+
+        // Local fallback key (Only used if USE_PROXY = false)
+        const DIRECT_API_KEY = "";
+
+        const MINUTE = 60000;
+        const REFRESH_INTERVAL = 10 * MINUTE;       // Prices + sentiment
+        const SSV_REFRESH_INTERVAL = 60 * MINUTE;   // Latest staking APR
+        const SSV_HISTORY_INTERVAL = 12 * 60 * MINUTE; // Daily-mean history
+
+        const SSV_API = 'https://api.ssv.network/api/v4/mainnet/apr';
+        const SSV_HISTORY_DAYS = 7;
 
         const orderedCoinIds = [
-            'bitcoin', 'ethereum', 'solana', 'lido-dao', 'ether-fi', 
+            'bitcoin', 'ethereum', 'solana', 'lido-dao', 'ether-fi',
             'celestia', 'eigenlayer', 'ssv-network', 'rocket-pool', 'obol-2'
+        ];
+
+        // Fear & Greed bands (upper bound exclusive), matching alternative.me
+        const FNG_BANDS = [25, 45, 55, 75, 101];
+
+        // Apple emoji PNGs per band: TV browsers render their own emoji font
+        const FNG_MOONS = [
+            'assets/new-moon-with-face.png',
+            'assets/waxing-crescent-moon.png',
+            'assets/first-quarter-moon.png',
+            'assets/waxing-gibbous-moon.png',
+            'assets/full-moon-with-face.png'
         ];
 
         // --- FETCH LOGIC ---
@@ -157,37 +431,45 @@
             const tableBody = document.getElementById('coin-table-body');
             const errorContainer = document.getElementById('error-container');
             const errorMessage = document.getElementById('error-message');
-            const refreshBtn = document.querySelector('.fa-rotate');
+            const refreshBtn = document.getElementById('refresh-btn');
 
-            refreshBtn.classList.add('fa-spin');
-            
+            refreshBtn.classList.add('spinning');
+
             try {
                 // 1. Fetch Coins
                 let data;
                 if (USE_PROXY) {
                     const response = await fetch('/api/stats');
-                    if (!response.ok) throw new Error("Failed to fetch data. Ensure your API key is set in Vercel.");
+                    if (!response.ok) {
+                        throw new Error("Prices could not load. Check CG_API_KEY is set in Vercel.");
+                    }
                     data = await response.json();
                 } else {
-                    if (!DIRECT_API_KEY) throw new Error("No API Key provided for direct access.");
+                    if (!DIRECT_API_KEY) {
+                        throw new Error("No API key set for direct access.");
+                    }
                     const coinsParam = orderedCoinIds.join(',');
                     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinsParam}&order=market_cap_desc&sparkline=true&price_change_percentage=24h&x_cg_demo_api_key=${DIRECT_API_KEY}`;
-                    
+
                     const response = await fetch(url);
                     if (!response.ok) {
-                        if (response.status === 429) throw new Error("Rate limit exceeded. Please wait.");
-                        throw new Error(`API Error: ${response.statusText}`);
+                        if (response.status === 429) {
+                            throw new Error("CoinGecko rate limit hit. Prices retry at the next update.");
+                        }
+                        throw new Error(`CoinGecko error: ${response.statusText}`);
                     }
                     data = await response.json();
                 }
 
                 // 2. Render Table
-                errorContainer.classList.add('hidden');
-                tableBody.innerHTML = ''; 
+                errorContainer.hidden = true;
+                tableBody.innerHTML = '';
                 const coinMap = new Map(data.map(coin => [coin.id, coin]));
                 orderedCoinIds.forEach(id => {
                     const coin = coinMap.get(id);
-                    if (coin) renderRow(coin, tableBody);
+                    if (coin) {
+                        renderRow(coin, tableBody);
+                    }
                 });
 
                 // 3. Fetch Sentiment (Fear & Greed)
@@ -198,9 +480,9 @@
             } catch (error) {
                 console.error(error);
                 errorMessage.innerText = error.message;
-                errorContainer.classList.remove('hidden');
+                errorContainer.hidden = false;
             } finally {
-                refreshBtn.classList.remove('fa-spin');
+                refreshBtn.classList.remove('spinning');
             }
         }
 
@@ -209,56 +491,33 @@
                 let json;
                 if (USE_PROXY) {
                     const res = await fetch('/api/sentiment');
-                    if (!res.ok) throw new Error("Proxy error");
+                    if (!res.ok) {
+                        throw new Error("Proxy error");
+                    }
                     json = await res.json();
                 } else {
                     const res = await fetch('https://api.alternative.me/fng/?limit=1');
                     json = await res.json();
                 }
-                
+
                 const item = json.data[0];
                 const value = parseInt(item.value);
-                const text = item.value_classification;
 
-                // Update UI
-                const valEl = document.getElementById('fng-value');
+                document.getElementById('fng-value').innerText = value;
                 const textEl = document.getElementById('fng-text');
-                const markerEl = document.getElementById('fng-marker');
+                textEl.innerText = item.value_classification;
+                textEl.className = `reading-label ${value < 45 ? 'fall' : value >= 55 ? 'rise' : ''}`;
 
-                valEl.innerText = value;
-                textEl.innerText = text;
+                // Moon phase and highlighted band follow the reading's band
+                const band = FNG_BANDS.findIndex(max => value < max);
+                const moonEl = document.getElementById('fng-moon');
+                moonEl.src = FNG_MOONS[band];
+                moonEl.alt = item.value_classification;
 
-                // Moon Phase Logic (Ranges: 0-24, 25-44, 45-54, 55-74, 75-100)
-                let moonEmoji = '🌓';
-                let colorClass = 'text-yellow-400';
-
-                if (value < 25) {
-                    moonEmoji = '🌚'; // Extreme Fear
-                    colorClass = 'text-red-500';
-                } else if (value < 45) {
-                    moonEmoji = '🌒'; // Fear
-                    colorClass = 'text-orange-400';
-                } else if (value < 55) {
-                    moonEmoji = '🌓'; // Neutral
-                    colorClass = 'text-yellow-400';
-                } else if (value < 75) {
-                    moonEmoji = '🌔'; // Greed
-                    colorClass = 'text-lime-400';
-                } else {
-                    moonEmoji = '🌝'; // Extreme Greed
-                    colorClass = 'text-green-500';
-                }
-
-                // Update text color
-                textEl.className = `text-sm font-bold uppercase tracking-wide ${colorClass} mt-1`;
-
-                // Update Marker Emoji/Image and Position
-                if (value < 25) {
-                    markerEl.innerHTML = `<img src="${NEW_MOON_IMAGE}" alt="Extreme Fear" class="block" style="width:1.875rem;height:1.875rem;">`;
-                } else {
-                    markerEl.textContent = moonEmoji;
-                }
-                markerEl.style.left = `${value}%`;
+                document.querySelectorAll('#fng-bands span').forEach((el, i) => {
+                    el.classList.toggle('active', i === band);
+                });
+                document.getElementById('fng-pin').style.left = `${value}%`;
 
             } catch (e) {
                 console.warn("Failed to fetch Fear & Greed index", e);
@@ -270,59 +529,142 @@
         function renderRow(coin, container) {
             const priceChange = coin.price_change_percentage_24h;
             const isPositive = priceChange >= 0;
-            const colorClass = isPositive ? 'text-green-400' : 'text-red-400';
-            const iconClass = isPositive ? 'fa-caret-up' : 'fa-caret-down';
-            const sparklineColor = isPositive ? '#4ade80' : '#f87171';
-            const sparklineSvg = generateSparkline(coin.sparkline_in_7d?.price, sparklineColor);
+            const trendClass = isPositive ? 'rise' : 'fall';
+
+            // 7-day line coloured by its own move (first vs last price), not the 24h change
+            const week = coin.sparkline_in_7d?.price ?? [];
+            const isWeekUp = week.length > 1 && week[week.length - 1] >= week[0];
+            const sparklineColor = isWeekUp ? 'var(--rise)' : 'var(--fall)';
+            const sparklineSvg = generateSparkline(week, sparklineColor);
 
             const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-750 transition-colors border-b border-gray-700/50 fade-in';
             row.innerHTML = `
-                <td class="p-4 text-right text-gray-400 font-mono text-sm">
-                    ${coin.market_cap_rank ?? '--'}
-                </td>
-                <td class="p-4">
-                    <div class="flex items-center gap-3">
-                        <img src="${coin.image}" alt="${coin.name}" class="w-8 h-8 rounded-full shadow-sm bg-gray-700" onerror="this.src='https://placehold.co/32x32/gray/white?text=?'">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-gray-100">${coin.name}</span>
-                            <span class="text-xs text-gray-500 uppercase">${coin.symbol}</span>
-                        </div>
+                <td>${coin.market_cap_rank ?? '--'}</td>
+                <td class="col-asset">
+                    <div class="asset">
+                        <img src="${coin.image}" alt="" onerror="this.style.visibility='hidden'">
+                        <span><span class="asset-name">${coin.name.replace(/\s*\(.*\)/, '')}</span><span class="asset-symbol">${coin.symbol.toUpperCase()}</span></span>
                     </div>
                 </td>
-                <td class="p-4 text-right font-medium text-gray-100">
-                    ${formatCurrency(coin.current_price)}
-                </td>
-                <td class="p-4 text-right">
-                    <div class="flex items-center justify-end gap-1 ${colorClass}">
-                        <i class="fa-solid ${iconClass} text-xs"></i>
-                        <span class="font-bold">${formatPercentage(priceChange)}</span>
-                    </div>
-                </td>
-                <td class="p-4 text-right text-gray-400 hidden md:table-cell font-mono text-sm">
-                    ${formatCompactNumber(coin.market_cap)}
-                </td>
-                <td class="p-4 text-right text-gray-400 hidden lg:table-cell font-mono text-sm">
-                    ${formatCompactNumber(coin.total_volume)}
-                </td>
-                 <td class="p-4 hidden sm:table-cell w-32">
-                    ${sparklineSvg}
-                </td>
+                <td class="price">${formatCurrency(coin.current_price)}</td>
+                <td class="${trendClass}">${isPositive ? '+' : ''}${formatPercentage(priceChange)}</td>
+                <td class="hide-md muted">${formatCompactNumber(coin.market_cap)}</td>
+                <td class="hide-md muted">${formatCompactNumber(coin.total_volume)}</td>
+                <td class="hide-sm">${sparklineSvg}</td>
             `;
             container.appendChild(row);
+        }
+
+        // --- SSV STAKING ---
+
+        async function fetchSsv(kind) {
+            const url = USE_PROXY ? `/api/ssv?kind=${kind}` : `${SSV_API}/${kind}`;
+            const res = await fetch(url, { headers: { accept: 'application/json' } });
+            if (!res.ok) {
+                throw new Error(`SSV ${kind} failed: ${res.status}`);
+            }
+            const json = await res.json();
+            return json.samples ?? [];
+        }
+
+        async function refreshSsvLatest() {
+            try {
+                const samples = await fetchSsv('latest');
+                if (samples.length === 0) {
+                    return;
+                }
+
+                // Newest sample first
+                const latest = [...samples].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+                document.getElementById('ssv-apr').innerText = Number(latest.currentApr).toFixed(2);
+                document.getElementById('ssv-apr-projected').innerText = `Projected ${Number(latest.aprProjected).toFixed(2)}%`;
+                document.getElementById('ssv-staked').innerText = formatCompactPlain(Number(latest.totalEffectiveBalance));
+                document.getElementById('ssv-clusters').innerText = `Across ${latest.totalActiveClusters} active clusters`;
+                document.getElementById('ssv-updated').innerText = `ssv.network, sampled ${formatTime(latest.timestamp)}`;
+
+            } catch (e) {
+                console.warn("Failed to fetch SSV APR", e);
+                document.getElementById('ssv-apr-projected').innerText = "APR unavailable. Retrying within the hour.";
+            }
+        }
+
+        async function refreshSsvHistory() {
+            try {
+                const samples = await fetchSsv('history');
+                const days = [...samples]
+                    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                    .slice(-SSV_HISTORY_DAYS)
+                    .map(s => ({ date: new Date(s.timestamp), apr: Number(s.currentApr) }));
+
+                renderAprChart(days);
+
+            } catch (e) {
+                console.warn("Failed to fetch SSV APR history", e);
+                document.getElementById('ssv-range').innerText = "History unavailable";
+            }
+        }
+
+        // Line + dots, padded y-range so day-to-day moves are readable.
+        // Labels the first and latest values; day labels sit on the baseline.
+        function renderAprChart(days) {
+            const svg = document.getElementById('ssv-chart');
+            if (days.length < 2) {
+                svg.innerHTML = '';
+                return;
+            }
+
+            const W = 640, H = 240;
+            const pad = { top: 28, right: 40, bottom: 34, left: 40 };
+            const plotW = W - pad.left - pad.right;
+            const plotH = H - pad.top - pad.bottom;
+
+            const values = days.map(d => d.apr);
+            const min = Math.min(...values), max = Math.max(...values);
+            const span = Math.max(max - min, 0.5);
+            const lo = min - span * 0.25, hi = max + span * 0.25;
+
+            const x = i => pad.left + (i / (days.length - 1)) * plotW;
+            const y = v => pad.top + (1 - (v - lo) / (hi - lo)) * plotH;
+
+            const points = days.map((d, i) => `${x(i).toFixed(1)},${y(d.apr).toFixed(1)}`).join(' ');
+            const lastIndex = days.length - 1;
+
+            // Vertical day rules and date labels
+            const grid = days.map((d, i) => `
+                <line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${pad.top}" y2="${H - pad.bottom}"/>
+                <text x="${x(i)}" y="${H - 10}" text-anchor="middle">${formatDay(d.date)}</text>
+            `).join('');
+
+            const dots = days.map((d, i) => `
+                <circle class="dot ${i === lastIndex ? 'dot-last' : ''}" cx="${x(i)}" cy="${y(d.apr)}" r="4">
+                    <title>${formatDay(d.date)}: ${d.apr.toFixed(2)}%</title>
+                </circle>
+            `).join('');
+
+            const labelFor = i => `<text class="value-label" x="${x(i)}" y="${y(days[i].apr) - 12}" text-anchor="middle">${days[i].apr.toFixed(2)}%</text>`;
+
+            svg.innerHTML = `${grid}<polyline class="line" points="${points}"/>${dots}${labelFor(0)}${labelFor(lastIndex)}`;
+
+            document.getElementById('ssv-range').innerText = `Low ${min.toFixed(2)}%, high ${max.toFixed(2)}%`;
         }
 
         // --- UTILITIES ---
         const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: num < 1 ? 4 : 2 }).format(num);
         const formatCompactNumber = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact' }).format(num);
+        const formatCompactPlain = (num) => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(num);
         const formatPercentage = (num) => num ? `${num.toFixed(2)}%` : '0.00%';
+        const formatDay = (date) => date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+        const formatTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         function generateSparkline(data, color) {
-            if (!data || data.length === 0) return '';
-            const width = 120, height = 40;
+            if (!data || data.length === 0) {
+                return '';
+            }
+            const width = 112, height = 32;
             const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
             const points = data.map((p, i) => `${(i / (data.length - 1)) * width},${height - ((p - min) / range) * height}`).join(' ');
-            return `<svg width="${width}" height="${height}" fill="none"><polyline points="${points}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            return `<svg class="spark" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" fill="none" aria-hidden="true"><polyline points="${points}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         }
 
         // --- TIMER LOGIC ---
@@ -330,13 +672,13 @@
         let timerInterval;
 
         function updateTimerDisplay() {
-            const now = Date.now();
-            const diff = Math.max(0, nextFetchTime - now);
-            const minutes = Math.floor(diff / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            document.getElementById('next-update').innerText = `Next update: ${minutes}m ${seconds}s`;
-            
+            const diff = Math.max(0, nextFetchTime - Date.now());
+            const minutes = Math.floor(diff / MINUTE);
+            const seconds = Math.floor((diff % MINUTE) / 1000);
+            document.getElementById('next-update').innerText = `Next update in ${minutes}:${String(seconds).padStart(2, '0')}`;
+
             if (diff <= 0) {
+                resetTimer();
                 fetchData();
             }
         }
@@ -347,13 +689,19 @@
 
         function manualRefresh() {
             fetchData();
-            resetTimer(); 
+            resetTimer();
         }
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             fetchData();
             timerInterval = setInterval(updateTimerDisplay, 1000);
+
+            // SSV runs on its own slower clocks, independent of price refreshes
+            refreshSsvLatest();
+            refreshSsvHistory();
+            setInterval(refreshSsvLatest, SSV_REFRESH_INTERVAL);
+            setInterval(refreshSsvHistory, SSV_HISTORY_INTERVAL);
         });
 
     </script>
